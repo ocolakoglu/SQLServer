@@ -33,9 +33,9 @@ SQL Server'da arama işlemi yaparken yaptığımız işlem bellidir değil mi?
 Örneğin "Lenovo Notebook Çantası" arama yaptığımız ifade bu olsun.
 
 Bunu şu şekilde arayabiliriz.
-
-SELECT \* FROM WEBITEMS WHERE TITLE\_ LIKE \'%LENOVO NOTEBOOK ÇANTASI%\'
-
+```SQL
+SELECT * FROM WEBITEMS WHERE TITLE_ LIKE '%LENOVO NOTEBOOK ÇANTASI%'
+```
 Buradan bir sonuç dönmediğini görüyoruz çünkü bu üç kelimenin bu şekilde
 yan yana geçtiği bir ürün yok.
 
@@ -44,15 +44,12 @@ yan yana geçtiği bir ürün yok.
 
 Bu durumda bu üç kelime ayrı ayrı yerlerde geçebilir ama aynı cümlede
 olmalı mantığı ile şu şekilde yazabiliriz.
-
-SELECT \* FROM WEBITEMS WHERE
-
-TITLE\_ LIKE N\'%Lenovo%\'
-
-AND TITLE\_ LIKE N\'%Notebook%\'
-
-AND TITLE\_ LIKE N\'%Çantası%\'
-
+```SQL
+SELECT * FROM WEBITEMS WHERE
+TITLE_ LIKE N'%Lenovo%'
+AND TITLE_ LIKE N'%Notebook%\'
+AND TITLE_ LIKE N'%Çantası%'
+```
 ![image](https://github.com/user-attachments/assets/9b125f9e-ab4f-4a9c-a184-580947bbe88a)
 
 Görüldüğü gibi burada bu formata uyan bazı kayıtlar var.
@@ -61,60 +58,45 @@ Görüldüğü gibi burada bu formata uyan bazı kayıtlar var.
 Ama bir de şöyle bakalım. "Çantası" kelimesi "Çanta" kökünden geliyor.
 Acaba "Çantası" değil de kökünü yazsak nasıl olur?
 
-SELECT \* FROM WEBITEMS WHERE
-
-TITLE\_ LIKE N\'%Lenovo%\'
-
-AND TITLE\_ LIKE N\'%Notebook%\'
-
+```SQL
+SELECT * FROM WEBITEMS WHERE
+TITLE_ LIKE N'%Lenovo%'
+AND TITLE_ LIKE N'%Notebook%'
 AND TITLE\_ LIKE N\'%Çanta%\'
-
+```
  ![image](https://github.com/user-attachments/assets/59bc972b-2a40-4668-9d07-805134798d85)
 
 Gördüğünüz gibi bu kez 24 satır döndü.
 
 Başka bir alternatif yöntem de fulltext search arama işlemi ile bu
 aramayı gerçekleştirmek.
-
-SELECT \* FROM WEBITEMS WHERE
-
-CONTAINS(TITLE\_,N\'Lenovo\')
-
-AND CONTAINS(TITLE\_,N\'Notebook\')
-
-AND CONTAINS(TITLE\_,N\'Çantası\')
-
+```SQL
+SELECT * FROM WEBITEMS WHERE
+CONTAINS(TITLE_,N'Lenovo')
+AND CONTAINS(TITLE_,N'Notebook')
+AND CONTAINS(TITLE_,N'Çantası')
+```
 Tabi ki fulltext arama işlemi diğerlerine göre çok çok hızlı çalışan bir
 yapı.
-
 Şimdi buraya kadar mevcut bilgilerimizin üzerinden geçtik.
 
 **2.Vektör arama işlemi ve vektör kavramı**
-
 Şimdi sizleri yepyeni bir kavram ile tanıştıracağım. "Vector Search"
-
 Özellikle GPT'ler dil modelleri yapay zeka gibi kavramlar çıktıktan
 sonra oyunun kuralları iyice değişti. Biz artık bir çok işimizi prompt
 yazarak hallediyoruz. Çünkü yapay zeka prompt ile ne istediğimizi
 anlayabilecek kadar akıllı.
-
 Peki bu noktada SQL Server tarafında neler oluyor?
-
 Orada da Vector Store ve Vector Search kavramları var.
-
 Temel anlamda olay şu aslında.
-
 Bir metin ifadeyi belli uzunlukta (ben burada 768 elemanlı olarak
 kullandım) bir vektör dizisine çeviriyor ve veriyi bu şekilde tutuyor.
-
 Buradaki vektör 768 tane ondalık sayıdan oluşuyor.
-
 Tabloda metin olarak tuttuğumuz bir kolonun tüm satırlarını vektöre
 çevirip içeride vektör olarak saklıyoruz ve arama yapmak istediğimizde
 arama yapmak istediğimiz metin ifadeyi de vektöre çevirip tüm satırlar
 için bu iki vektör arasındaki benzerliği hesaplayıp en yakın olanı
 bulmaya çalışıyoruz.
-
 Örnek olarak arama yapmak istediğimiz cümle şöyle olsun.
 
 "Lenovo ya da Samsonite marka bir notebook çantası arıyorum."
@@ -123,13 +105,11 @@ Bunu vektöre çevirdiğimizde aşağıdaki sonucu elde ediyoruz.
 
 ![image](https://github.com/user-attachments/assets/b35791eb-0e75-4293-9dc9-9432c57367e5)
 
-
 "Lenovo ya da Samsonite marka bir notebook çantası arıyorum."
-
 İfadesinin vektörize edilmiş (embed edilmiş hali)
-
+```
 -0.0013835488,-0.009921636,0.0018167492,-0.013393576,-0.0114802085,0.004026309,-0.030461833,-0.010954348,0.009915302,-0.018398745,0.0169162,0.045490008,0.0027528424,0.009655539,0.010035679,-0.026533727,0.021325817,-0.020641567,0.009579511,0.000736916,-0.028003598,-0.013900429,0.020894993,-0.0065954174,0.0020575041,0.0043525957,0.02059088,...
-
+```
 Vektöre çevirme işini getEmbeddings isimli procedure yapıyor.
 
 Bu procedure SQL Server içerisinde olan bir procedure değil. AzureSQL'de
@@ -142,7 +122,6 @@ gerçekleştiriyor.
 
 
 Şimdi iki vektörün karşılaştırmasını nasıl yaptığımıza bakalım.
-
 Burada cosine distance isimli bir formül kullanıyoruz.
 
 **Vektör Benzerlik Karşılaştırma Cosine Distance**
@@ -179,7 +158,7 @@ Arama cümlesi olan
 "Lenovo ya da Samsonite marka bir notebook çantası arıyorum."
 
 İle Veritabanındaki kayıt olan
-
+```
 "LenovoThinkpad Profesyonel 15.6 4X40Q26383 Notebook Sırt Çantası
 Antrasit Ürün Ağırlığı 1,16 kg (2,56 lbs) Yükseklik 311 mm (12,25 inç)
 Derinlik 165 mm (6,50 inç) Uzunluk 489 mm (19,25 inç) Dolgulu Defter
@@ -191,12 +170,11 @@ Genişletebilirlik : Yok , Göğüs Kilidi : Yok , Bel Kilidi : Yok , USB
 Portu : Yok , Garanti Süresi (Ay) : 24 , Yurt Dışı Satış : Yok , Stok
 Kodu : HBCV00000UDIJ3 Değerlendirme Sayısı:5Değerlendirme Marka:Lenovo
 Satıcı:Kraft Online Satıcı puanı:9,5"
-
+```
 Cümlesinin vektöre çevrilmiş hallerinin vektörlerini ve aradaki
 benzerliği görüyorsunuz.
 
 ![image](https://github.com/user-attachments/assets/a164d399-d9e5-4ef9-8d4c-319eb89f7f8e)
-
 
 Veritabanından vektörler üzerinden benzerlik araması yapabiliyor olmak
 bize veritabanını bir chatbot gibi kullanma imkanı sunar.
@@ -232,354 +210,213 @@ için burada bunu dışarıdan bir eklenti ile yapacağız. Burada çeşitli dil
 modelleri var. Örneğin, Azure Open AI servisini kullanabiliriz.
 
 Bunun için şöyle bir procedure yazdım.
-
-Create proc \[dbo\].\[getEmbeddings\]
-
-@input_text as nvarchar(max)=\'help me plan a high school graduation
-party\',
-
+```SQL
+Create proc [dbo].[getEmbeddings] 
+@input_text as nvarchar(max)='help me plan a high school graduation party',
 @vectorstr as nvarchar(max) output
-
 AS
-
-\--set @input_text =left(@input_text,10000)
-
+ 
+ 
+--set  @input_text =left(@input_text,10000) 
 set @input_text=dbo.RemoveSpecialChars(@input_text)
+set @input_text=TRIM(@input_text) 
 
-set @input_text=TRIM(@input_text)
+set @input_text=replace(@input_text,'\','\\') 
+set @input_text=replace(@input_text,'{','') 
+set @input_text=replace(@input_text,'}','') 
+--set @input_text=replace(@input_text,'\''','''') 
+set @input_text=replace(@input_text,'"','\"') 
+set @input_text=replace(@input_text,'''','''''') 
 
-set @input_text=replace(@input_text,\'\\,\'\\\')
-
-set @input_text=replace(@input_text,\'{\',\'\')
-
-set @input_text=replace(@input_text,\'}\',\'\')
-
-\--set @input_text=replace(@input_text,\'\\\'\',\'\'\'\')
-
-set @input_text=replace(@input_text,\'\"\',\'\\\')
-
-set @input_text=replace(@input_text,\'\'\'\',\'\'\'\'\'\')
-
-set @input_text =trim(left(@input_text,5000) )
-
+set  @input_text =trim(left(@input_text,5000) )
 DECLARE @Object AS INT;
-
 DECLARE @ResponseText AS NVARCHAR(MAX)
-
 DECLARE @StatusText AS nVARCHAR(800);
-
 DECLARE @URL AS NVARCHAR(MAX);
-
 DECLARE @Body AS NVARCHAR(MAX);
-
 DECLARE @ApiKey AS VARCHAR(800);
-
 DECLARE @Status AS INT;
-
 DECLARE @hr INT;
-
 DECLARE @ErrorSource AS VARCHAR(max);
-
 DECLARE @ErrorDescription AS VARCHAR(max);
+DECLARE @Headers  nVARCHAR(MAX);
+DECLARE @Payload  nVARCHAR(MAX);
+DECLARE @ContentType  nVARCHAR(max);
+--SET NOCOUNT on
+SET @URL = 'https://omeropenaiservice.openai.azure.com/openai/deployments/text-embedding-ada-002/embeddings?api-version=2023-05-15';
+ SET @Headers = 'api-key: xxxxxxxx';
 
-DECLARE @Headers nVARCHAR(MAX);
+-- Gönderilecek Payload
+ SET @Payload = '{"input": "' + @input_text + '"}';
+ 
 
-DECLARE @Payload nVARCHAR(MAX);
-
-DECLARE @ContentType nVARCHAR(max);
-
-\--SET NOCOUNT on
-
-SET @URL =
-\'https://omeropenaiservice.openai.azure.com/openai/deployments/text-embedding-ada-002/embeddings?api-version=2023-05-15\';
-
-SET @Headers = \'api-key: xxxxxxxx\';
-
-\-- Gönderilecek Payload
-
-SET @Payload = \'{\"input\": \"\' + @input_text + \'\"}\';
-
-SET @ApiKey = \'api-key: xxxxxxxxx\'\--\'Bearer
-sk-xxxxxxxxxxxxxxxxxxxxx\';
-
-\--SET @URL = \'https://api.openai.com/v1/embeddings\';
-
-SET @Body = \'{\"input\": \"\' + @input_text + \'\"}\'\-- \'{\"input\":
-\"\' + @input_text + \'\"}\';\--\'{\"model\":
-\"text-embedding-ada-002\", \"input\": \"\' + REPLACE(@input_text,
-\'\"\', \'\\\') + \'\"}\';
-
-print @body
-
-\-- Create OLE Automation object
-
-EXEC @hr = sp_OACreate \'MSXML2.ServerXMLHTTP\', @Object OUT;
-
-IF @hr \<\> 0
-
+ SET @ApiKey = 'api-key: xxxxxxxxx'--'Bearer sk-xxxxxxxxxxxxxxxxxxxxx';
+--SET @URL = 'https://api.openai.com/v1/embeddings';
+SET @Body =  '{"input": "' + @input_text + '"}'-- '{"input": "' + @input_text + '"}';--'{"model": "text-embedding-ada-002", "input": "' + REPLACE(@input_text, '"', '\"') + '"}';
+ 
+print @body 
+-- Create OLE Automation object
+EXEC @hr = sp_OACreate 'MSXML2.ServerXMLHTTP', @Object OUT;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to create OLE object\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to create OLE object';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    RETURN;
 END
 
-\-- Open connection
-
-EXEC @hr = sp_OAMethod @Object, \'open\', NULL, \'POST\', @URL,
-\'false\';
-
-IF @hr \<\> 0
-
+-- Open connection
+EXEC @hr = sp_OAMethod @Object, 'open', NULL, 'POST', @URL, 'false';
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to open connection\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to open connection';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Set request headers
-
-EXEC @hr = sp_OAMethod @Object, \'setRequestHeader\', NULL,
-\'Content-Type\', \'application/json\';
-
-EXEC @hr = sp_OAMethod @Object, \'setRequestHeader\', NULL, \'api-key\',
-\'xxxxxxxxxxxxx\';
-
-IF @hr \<\> 0
-
+-- Set request headers
+EXEC @hr = sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+EXEC @hr = sp_OAMethod @Object, 'setRequestHeader', NULL, 'api-key', 'xxxxxxxxxxxxx';
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to set Content-Type header\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to set Content-Type header';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-EXEC @hr = sp_OAMethod @Object, \'setRequestHeader\', NULL,
-\'Authorization\', @ApiKey;
-
-IF @hr \<\> 0
-
+EXEC @hr = sp_OAMethod @Object, 'setRequestHeader', NULL, 'Authorization', @ApiKey;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to set Authorization header\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to set Authorization header';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Send request
-
-EXEC @hr = sp_OAMethod @Object, \'send\', NULL, @Body;
-
-IF @hr \<\> 0
-
+-- Send request
+EXEC @hr = sp_OAMethod @Object, 'send', NULL, @Body;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to send request\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to send request';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Get HTTP status
-
-EXEC @hr = sp_OAMethod @Object, \'status\', @Status OUT;
-
-IF @hr \<\> 0
-
+-- Get HTTP status
+EXEC @hr = sp_OAMethod @Object, 'status', @Status OUT;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to get HTTP status\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to get HTTP status';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Get status text
-
-EXEC @hr = sp_OAMethod @Object, \'statusText\', @StatusText OUT;
-
-IF @hr \<\> 0
-
+-- Get status text
+EXEC @hr = sp_OAMethod @Object, 'statusText', @StatusText OUT;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to get HTTP status text\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to get HTTP status text';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Print status and status text
+-- Print status and status text
+PRINT 'HTTP Status: ' + CAST(@Status AS NVARCHAR);
+PRINT 'HTTP Status Text: ' + @StatusText;
 
-PRINT \'HTTP Status: \' + CAST(@Status AS NVARCHAR);
-
-PRINT \'HTTP Status Text: \' + @StatusText;
-
-IF @Status \<\> 200
-
+IF @Status <> 200
 BEGIN
-
-PRINT \'HTTP request failed with status code \' + CAST(@Status AS
-NVARCHAR);
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    PRINT 'HTTP request failed with status code ' + CAST(@Status AS NVARCHAR);
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Get response text
-
+-- Get response text
 DECLARE @json TABLE (Result NVARCHAR(MAX))
+INSERT  @json(Result)
+EXEC    dbo.sp_OAGetProperty @Object, 'responseText'
+SELECT  @ResponseText = Result FROM @json
 
-INSERT @json(Result)
+-- Print response text
+--SELECT @ResponseText;
 
-EXEC dbo.sp_OAGetProperty @Object, \'responseText\'
-
-SELECT @ResponseText = Result FROM @json
-
-\-- Print response text
-
-\--SELECT @ResponseText;
-
-\-- Destroy OLE Automation object
-
+-- Destroy OLE Automation object
 DECLARE @t AS TABLE (EmbeddingValue nVARCHAR(MAX))
 
-\-- Embedding dizisini parçalayarak liste şeklinde almak
-
+-- Embedding dizisini parçalayarak liste şeklinde almak
+ 
 SET @vectorstr = (
-
-SELECT EmbeddingValue + \',\'
-
-FROM (
-
-SELECT value AS EmbeddingValue
-
-FROM OPENJSON(@ResponseText, \'\$.data\[0\].embedding\')
-
-) t
-
-FOR XML PATH(\'\')
-
+    SELECT EmbeddingValue + ','
+    FROM (
+        SELECT value AS EmbeddingValue
+        FROM OPENJSON(@ResponseText, '$.data[0].embedding')
+    ) t
+    FOR XML PATH('')
 )
 
-SET @vectorstr = SUBSTRING(@vectorstr, 1, LEN(@vectorstr) - 1)
+ SET @vectorstr = SUBSTRING(@vectorstr, 1, LEN(@vectorstr) - 1)
+
+```
 
 Kullanımı da bu şekilde,
 
 ![image](https://github.com/user-attachments/assets/65546407-c158-4513-86d0-0065b27719e1)
 
-Buradaki vektör \"text-embedding-ada-002\"
+Buradaki vektör "text-embedding-ada-002"
 modelini kullanıyor ve 1536 elemanlı vektör oluşturuyor.
 
 Alternatif olacak Azure kullanmadan Python da kendimiz bir kod
 yazabiliriz ve başka bir model üzerinden vektör dönüşümü yapabiliriz.
 
+```python
 from flask import Flask, request, jsonify
-
 from sentence_transformers import SentenceTransformer
 
-\# Flask uygulaması ve model başlatma
+# Flask uygulaması ve model başlatma
+app = Flask(__name__)
+model = SentenceTransformer('all-mpnet-base-v2')
 
-app = Flask(\_\_name\_\_)
-
-model = SentenceTransformer(\'all-mpnet-base-v2\')
-
-\# Vektör döndüren endpoint tanımlama
-
-@app.route(\'/get_vector\', methods=\[\'POST\'\])
-
+# Vektör döndüren endpoint tanımlama
+@app.route('/get_vector', methods=['POST'])
 def get_vector():
+    # JSON isteğinden metni al
+    data = request.get_json()
+    if 'text' not in data:
+        return jsonify({"error": "Request must contain 'text' field"}), 400
 
-    \# JSON isteğinden metni al
+    try:
+        # Metni vektöre çevirme
+        embedding = model.encode(data['text'])
 
-    data = request.get_json()
+        # Embedding vektörünü listeye çevirip JSON olarak döndürme
+        return jsonify({"vector": embedding.tolist()})
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    if \'text\' not in data:
+# Flask uygulamasını çalıştırma
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
 
-        return jsonify({\"error\": \"Request must contain \'text\'
-field\"}), 400
-
-    try:
-
-        \# Metni vektöre çevirme
-
-        embedding = model.encode(data\[\'text\'\])
-
-        \# Embedding vektörünü listeye çevirip JSON olarak döndürme
-
-        return jsonify({\"vector\": embedding.tolist()})
-
-   
-
-    except Exception as e:
-
-        return jsonify({\"error\": str(e)}), 500
-
-\# Flask uygulamasını çalıştırma
-
-if \_\_name\_\_ == \'\_\_main\_\_\':
-
-    app.run(host=\"0.0.0.0\", port=5000)
+```
 
 ![image](https://github.com/user-attachments/assets/799d93aa-b0df-4fdb-9eaf-3b672bcb221c)
 
@@ -590,274 +427,135 @@ oluşturuyor.
 
 Şimdi bu apiyi SQL'den çağıracak TSQL kodunu yazalım.
 
-create PROCEDURE \[dbo\].\[getEmbeddingsLocal\]
-
-@str NVARCHAR(MAX),
-
-@vector NVARCHAR(MAX) OUTPUT
-
+```SQL
+create PROCEDURE [dbo].[getEmbeddingsLocal]
+    @str NVARCHAR(MAX),
+    @vector NVARCHAR(MAX) OUTPUT
 AS
-
 BEGIN
-
 DECLARE @Object INT;
-
 DECLARE @ResponseText NVARCHAR(MAX);
-
 DECLARE @StatusCode INT;
-
-DECLARE @URL NVARCHAR(MAX) = \'http://127.0.0.1:5000/get_vector\';
-
+DECLARE @URL NVARCHAR(MAX) = 'http://127.0.0.1:5000/get_vector';
 DECLARE @HttpRequest NVARCHAR(MAX);
-
 DECLARE @StatusText AS nVARCHAR(800);
-
 DECLARE @Body AS NVARCHAR(MAX);
-
 DECLARE @ApiKey AS VARCHAR(800);
-
 DECLARE @Status AS INT;
-
 DECLARE @hr INT;
-
 DECLARE @ErrorSource AS VARCHAR(max);
-
 DECLARE @ErrorDescription AS VARCHAR(max);
-
-DECLARE @Headers nVARCHAR(MAX);
-
-DECLARE @Payload nVARCHAR(MAX);
-
-DECLARE @ContentType nVARCHAR(max);
-
-SET @Body = \'{\"text\": \"\' + @str + \'\"}\'
-
-print @body
-
-\-- Create OLE Automation object
-
-EXEC @hr = sp_OACreate \'MSXML2.ServerXMLHTTP\', @Object OUT;
-
-IF @hr \<\> 0
-
+DECLARE @Headers  nVARCHAR(MAX);
+DECLARE @Payload  nVARCHAR(MAX);
+DECLARE @ContentType  nVARCHAR(max);
+ 
+SET @Body = '{"text": "' + @str + '"}'
+ 
+print @body 
+-- Create OLE Automation object
+EXEC @hr = sp_OACreate 'MSXML2.ServerXMLHTTP', @Object OUT;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to create OLE object\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to create OLE object';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    RETURN;
 END
 
-\-- Open connection
-
-EXEC @hr = sp_OAMethod @Object, \'open\', NULL, \'POST\', @URL,
-\'false\';
-
-IF @hr \<\> 0
-
+-- Open connection
+EXEC @hr = sp_OAMethod @Object, 'open', NULL, 'POST', @URL, 'false';
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to open connection\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to open connection';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Set request headers
-
-EXEC @hr = sp_OAMethod @Object, \'setRequestHeader\', NULL,
-\'Content-Type\', \'application/json\';
-
-IF @hr \<\> 0
-
+-- Set request headers
+EXEC @hr = sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+ 
+IF @hr <> 0
 BEGIN
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to set Content-Type header';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
+END
+ 
 
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to set Content-Type header\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+-- Send request
+EXEC @hr = sp_OAMethod @Object, 'send', NULL, @Body;
+IF @hr <> 0
+BEGIN
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to send request';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Send request
-
-EXEC @hr = sp_OAMethod @Object, \'send\', NULL, @Body;
-
-IF @hr \<\> 0
-
+-- Get HTTP status
+EXEC @hr = sp_OAMethod @Object, 'status', @Status OUT;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to send request\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to get HTTP status';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Get HTTP status
-
-EXEC @hr = sp_OAMethod @Object, \'status\', @Status OUT;
-
-IF @hr \<\> 0
-
+-- Get status text
+EXEC @hr = sp_OAMethod @Object, 'statusText', @StatusText OUT;
+IF @hr <> 0
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to get HTTP status\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
+    PRINT 'Failed to get HTTP status text';
+    PRINT 'Error Source: ' + @ErrorSource;
+    PRINT 'Error Description: ' + @ErrorDescription;
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
 
-\-- Get status text
+-- Print status and status text
+PRINT 'HTTP Status: ' + CAST(@Status AS NVARCHAR);
+PRINT 'HTTP Status Text: ' + @StatusText;
 
-EXEC @hr = sp_OAMethod @Object, \'statusText\', @StatusText OUT;
-
-IF @hr \<\> 0
-
+IF @Status <> 200
 BEGIN
-
-EXEC sp_OAGetErrorInfo @Object, @ErrorSource OUT, @ErrorDescription OUT;
-
-PRINT \'Failed to get HTTP status text\';
-
-PRINT \'Error Source: \' + @ErrorSource;
-
-PRINT \'Error Description: \' + @ErrorDescription;
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
+    PRINT 'HTTP request failed with status code ' + CAST(@Status AS NVARCHAR);
+    EXEC sp_OADestroy @Object;
+    RETURN;
 END
-
-\-- Print status and status text
-
-PRINT \'HTTP Status: \' + CAST(@Status AS NVARCHAR);
-
-PRINT \'HTTP Status Text: \' + @StatusText;
-
-IF @Status \<\> 200
-
-BEGIN
-
-PRINT \'HTTP request failed with status code \' + CAST(@Status AS
-NVARCHAR);
-
-EXEC sp_OADestroy @Object;
-
-RETURN;
-
-END
-
-\-- Get response text
-
+-- Get response text
 DECLARE @json TABLE (Result NVARCHAR(MAX))
+INSERT  @json(Result)
+EXEC    dbo.sp_OAGetProperty @Object, 'responseText'
+SELECT  @ResponseText = Result FROM @json
 
-INSERT @json(Result)
-
-EXEC dbo.sp_OAGetProperty @Object, \'responseText\'
-
-SELECT @ResponseText = Result FROM @json
-
-\-- Destroy OLE Automation object
-
-DECLARE @t AS TABLE (EmbeddingValue nVARCHAR(MAX))
+-- Destroy OLE Automation object
+DECLARE @t AS TABLE (EmbeddingValue nVARCHAR(MAX)
 
 SET @vector = (
-
-SELECT EmbeddingValue + \',\'
-
-FROM (
-
-SELECT value AS EmbeddingValue
-
-FROM OPENJSON(@ResponseText, \'\$.vector\')
-
-) t
-
-FOR XML PATH(\'\')
-
+    SELECT EmbeddingValue + ','
+    FROM (
+        SELECT value AS EmbeddingValue
+        FROM OPENJSON(@ResponseText, '$.vector')
+    ) t
+    FOR XML PATH('')
 )
-
-SET @vector = SUBSTRING(@vector , 1, LEN(@vector ) - 1)
-
+ SET @vector = SUBSTRING(@vector , 1, LEN(@vector ) - 1)
 End
 
-Onun da kullanımı bu şekilde.
-
-![image](https://github.com/user-attachments/assets/0bc002da-892f-4054-ad02-52408eaefa86)
-
-
-Şimdi tabloya eklediğimiz alan için bu vektöre çevirme işlemini
-gerçekleştirelim.  
-Ben burada local hizmeti kullanıyor olacağım. Aşağıdaki sorgu tablodaki
-tüm satırlar için VECTOR768 (768 elemanlı bir alan olduğu için bu ismi
-kullandım) alanını vektöre çevirip update eder.
-
-DECLARE @ID AS INT
-
-DECLARE @STR AS NVARCHAR(MAX)
-
-DECLARE CRS CURSOR FOR SELECT ID,DESCRIPTION2 FROM WEBITEMS WHERE
-DESCRIPTION2 IS NOT NULL
-
-OPEN CRS
-
-FETCH NEXT FROM CRS INTO @ID,@STR
-
-WHILE @@FETCH_STATUS =0
-
-BEGIN
-
-DECLARE @VECTOR AS NVARCHAR(MAX)
-
-EXEC getEmbeddingsLocal @STR,@VECTOR OUTPUT
-
-UPDATE WEBITEMS SET VECTOR=@VECTOR WHERE ID=@ID
-
-FETCH NEXT FROM CRS INTO @ID,@STR
-
-END
-
-CLOSE CRS
-
-DEALLOCATE CRS
+```
 
 Uzun bir işlemden sonra artık vektör kolonumuz hazır ve şimdi bu kolon
 üzerinde similarity search yapacağız.
@@ -871,9 +569,9 @@ Uzun bir işlemden sonra artık vektör kolonumuz hazır ve şimdi bu kolon
 
 Örnek olarak 3 elemanlı iki vektörümüz olsun.
 
-Vector1=\[0.5,0.3,-0.8\]
+Vector1=[0.5,0.3,-0.8]
 
-Vector2=\[-0.2,0.4,0.9\]
+Vector2=[-0.2,0.4,0.9]
 
 Burada cosine distance şöyle hesaplanır.
 
@@ -895,130 +593,126 @@ Benzerlik hesaplamak için ise
 
 
 **TSQL ile Cosine Distance Hesaplama Örneği**
-
-create FUNCTION \[dbo\].\[CosineSimilarity\] (
-
-@Vector1 NVARCHAR(MAX), @Vector2 NVARCHAR(MAX)
-
+```SQL
+create FUNCTION [dbo].[CosineSimilarity] (
+    @Vector1 NVARCHAR(MAX), @Vector2 NVARCHAR(MAX)
 )
-
 RETURNS FLOAT
-
 AS
-
 BEGIN
+set @vector1=REPLACE(@vector1,'[','')
+set @vector1=REPLACE(@vector1,']','')
 
-set @vector1=REPLACE(@vector1,\'\[\',\'\')
+set @vector2=REPLACE(@vector2,'[','')
+set @vector2=REPLACE(@vector2,']','')
 
-set @vector1=REPLACE(@vector1,\'\]\',\'\')
+ DECLARE @dot_product FLOAT = 0, @magnitude1 FLOAT = 0, @magnitude2 FLOAT = 0;
+    DECLARE @val1 FLOAT, @val2 FLOAT;
+    DECLARE @i INT = 0;
+    DECLARE @v1 NVARCHAR(MAX), @v2 NVARCHAR(MAX);
+    DECLARE @len INT;
 
-set @vector2=REPLACE(@vector2,\'\[\',\'\')
+    -- Vektörleri ayır ve tabloya koy
+    DECLARE @tvector1 TABLE (ID INT, Value FLOAT);
+    DECLARE @tvector2 TABLE (ID INT, Value FLOAT);
+ insert into @tvector1  
+ select ordinal,CONVERT(float,value) from string_split (@vector1,',',1) ORDER BY 2   
 
-set @vector2=REPLACE(@vector2,\'\]\',\'\')
+  insert into @tvector2  
+ select ordinal,CONVERT(float,value) from string_split (@vector2,',',1) ORDER BY 2   
 
-DECLARE @dot_product FLOAT = 0, @magnitude1 FLOAT = 0, @magnitude2 FLOAT
-= 0;
+   SET @len = (SELECT COUNT(*) FROM @tvector1);
+    IF @len <> (SELECT COUNT(*) FROM @tvector2)
+        RETURN NULL; -- Vektörler farklı uzunlukta ise NULL döndür
 
-DECLARE @val1 FLOAT, @val2 FLOAT;
+    -- Cosinus benzerliğini hesapla
+    WHILE @i < @len
+    BEGIN
+        SET @i = @i + 1;
 
-DECLARE @i INT = 0;
+        SELECT @val1 = Value FROM @tvector1 WHERE ID = @i;
+        SELECT @val2 = Value FROM @tvector2 WHERE ID = @i;
 
-DECLARE @v1 NVARCHAR(MAX), @v2 NVARCHAR(MAX);
+        SET @dot_product = @dot_product + (@val1 * @val2);
+        SET @magnitude1 = @magnitude1 + (@val1 * @val1);
+        SET @magnitude2 = @magnitude2 + (@val2 * @val2);
+    END
 
-DECLARE @len INT;
+    IF @magnitude1 = 0 OR @magnitude2 = 0
+        RETURN 0;
 
-\-- Vektörleri ayır ve tabloya koy
+    RETURN @dot_product / (SQRT(@magnitude1) * SQRT(@magnitude2));
+end 
 
-DECLARE @tvector1 TABLE (ID INT, Value FLOAT);
-
-DECLARE @tvector2 TABLE (ID INT, Value FLOAT);
-
-insert into @tvector1
-
-select ordinal,CONVERT(float,value) from string_split (@vector1,\',\',1)
-ORDER BY 2
-
-insert into @tvector2
-
-select ordinal,CONVERT(float,value) from string_split (@vector2,\',\',1)
-ORDER BY 2
-
-SET @len = (SELECT COUNT(\*) FROM @tvector1);
-
-IF @len \<\> (SELECT COUNT(\*) FROM @tvector2)
-
-RETURN NULL; \-- Vektörler farklı uzunlukta ise NULL döndür
-
-\-- Cosinus benzerliğini hesapla
-
-WHILE @i \< @len
-
-BEGIN
-
-SET @i = @i + 1;
-
-SELECT @val1 = Value FROM @tvector1 WHERE ID = @i;
-
-SELECT @val2 = Value FROM @tvector2 WHERE ID = @i;
-
-SET @dot_product = @dot_product + (@val1 \* @val2);
-
-SET @magnitude1 = @magnitude1 + (@val1 \* @val1);
-
-SET @magnitude2 = @magnitude2 + (@val2 \* @val2);
-
-END
-
-IF @magnitude1 = 0 OR @magnitude2 = 0
-
-RETURN 0;
-
-RETURN @dot_product / (SQRT(@magnitude1) \* SQRT(@magnitude2));
-
-end
-
-DECLARE @VECTOR1 AS VARCHAR(MAX)=\'1,2,3,4,5,6,7,8\'
-
-DECLARE @VECTOR2 AS VARCHAR(MAX)=\'2,0,3,4,5,6,7,8\'
+DECLARE @VECTOR1 AS VARCHAR(MAX)='1,2,3,4,5,6,7,8'
+DECLARE @VECTOR2 AS VARCHAR(MAX)='2,0,3,4,5,6,7,8'
 
 SELECT dbo.CosineSimilarity(@VECTOR1,@VECTOR2)
+```
 
 ![image](https://github.com/user-attachments/assets/d467f92f-7ad2-4396-8dc3-489e6966c25a)
 
 ![image](https://github.com/user-attachments/assets/cdc5b427-4b41-4420-93e1-3e064fdb6aac)
-
-
-Şimdi db deki bir vektör ile bir string ifadeyi karşılaştıralım.
-
-\--Arama cümlesi oluşturuluyor ve vektöre çevriliyor
-
-DECLARE @query AS NVARCHAR(MAX) = \'Bir notebook çantası bakıyorum\';
-
+```SQL
+--Arama cümlesi oluşturuluyor ve vektöre çevriliyor
+DECLARE @query AS NVARCHAR(MAX) = 'Bir notebook çantası bakıyorum';
 DECLARE @searchVector AS NVARCHAR(MAX);
+exec getEmbeddingsLocal @query,@searchVector output 
 
-exec getEmbeddingsLocal @query,@searchVector output
-
-\--Veritabanından seçilen 1 satırdaki DESCRIPTION2 alanı vektöre
-çevriliyor
-
+--Veritabanından seçilen 1 satırdaki DESCRIPTION2 alanı vektöre çevriliyor
 DECLARE @dbText as nvarchar(max)
-
 DECLARE @dbVector as nvarchar(max)
-
 SELECT @dbText=DESCRIPTION2 FROM WEBITEMS WHERE ID=80472
+exec getEmbeddingsLocal @dbText,@dbVector output 
 
-exec getEmbeddingsLocal @dbText,@dbVector output
-
-\--Vektör ve Cümeleler yazdırılıyor
-
+--Vektör ve Cümeleler yazdırılıyor
 select @query Query,@searchVector SearchVector
-
 select @dbText DBText,@dbvector DBVector
 
-\--İki vektörün benzerlik ve Cosine distance değerleri hesaplanıyor
+--İki vektörün benzerlik ve Cosine distance değerleri hesaplanıyor
+Select dbo.CosineSimilarity(@searchVector,@dbvector) Similarity,1 -dbo.CosineSimilarity(@searchVector,@dbvector) CosineDistance
+```
 
-Select dbo.CosineSimilarity(@searchVector,@dbvector) Similarity,1
--dbo.CosineSimilarity(@searchVector,@dbvector) CosineDistance
+Şimdi db deki bir vektör ile bir string ifadeyi karşılaştıralım.
+```SQL
+--Arama cümlesi oluşturuluyor ve vektöre çevriliyor
+DECLARE @query AS NVARCHAR(MAX) = 'Bir notebook çantası bakıyorum';
+DECLARE @searchVector AS NVARCHAR(MAX);
+exec getEmbeddingsLocal @query,@searchVector output 
+
+--Veritabanından seçilen 1 satırdaki DESCRIPTION2 alanı vektöre çevriliyor
+DECLARE @dbText as nvarchar(max)
+DECLARE @dbVector as nvarchar(max)
+SELECT @dbText=DESCRIPTION2 FROM WEBITEMS WHERE ID=80472
+exec getEmbeddingsLocal @dbText,@dbVector output 
+
+--Vektör ve Cümeleler yazdırılıyor
+select @query Query,@searchVector SearchVector
+select @dbText DBText,@dbvector DBVector
+
+--İki vektörün benzerlik ve Cosine distance değerleri hesaplanıyor
+Select dbo.CosineSimilarity(@searchVector,@dbvector) Similarity,1 -dbo.CosineSimilarity(@searchVector,@dbvector) CosineDistance
+```
+```SQL
+--Arama cümlesi oluşturuluyor ve vektöre çevriliyor
+DECLARE @query AS NVARCHAR(MAX) = 'Bir notebook çantası bakıyorum';
+DECLARE @searchVector AS NVARCHAR(MAX);
+exec getEmbeddingsLocal @query,@searchVector output 
+
+--Veritabanından seçilen 1 satırdaki DESCRIPTION2 alanı vektöre çevriliyor
+DECLARE @dbText as nvarchar(max)
+DECLARE @dbVector as nvarchar(max)
+SELECT @dbText=DESCRIPTION2 FROM WEBITEMS WHERE ID=80472
+exec getEmbeddingsLocal @dbText,@dbVector output 
+
+--Vektör ve Cümeleler yazdırılıyor
+select @query Query,@searchVector SearchVector
+select @dbText DBText,@dbvector DBVector
+
+--İki vektörün benzerlik ve Cosine distance değerleri hesaplanıyor
+Select dbo.CosineSimilarity(@searchVector,@dbvector) Similarity,1 -dbo.CosineSimilarity(@searchVector,@dbvector) CosineDistance
+```
+
 
 ![image](https://github.com/user-attachments/assets/fa5668f2-8640-4d4f-9537-451f0777fb6c)
 
@@ -1087,16 +781,15 @@ Yani vektörün her bir elemanını bir satır olarak sisteme eklesek.
 
 Bunun için bir tablo oluşturacağız.
 
+```SQL
 CREATE TABLE vectordetails_WEBITEMS(
+	id int IDENTITY(1,1) NOT NULL,
+	vector_id [int] NOT NULL,
+value_ float NULL,
+key_ int NOT NULL
+) ON [PRIMARY]
 
-id int IDENTITY(1,1) NOT NULL,
-
-vector_id \[int\] NOT NULL,
-
-> value\_ float NULL,  
-> key\_ int NOT NULL
-
-) ON \[PRIMARY\]
+```
 
 Burada bir ürün için ID değerini burada Vector_id olarak tutacağız.
 Vektör elemanının sıra numarasını key\_, değerini de value\_ olarak
@@ -1113,37 +806,27 @@ Burada virgül ile ayırt edilen verileri satır satır okur isek,
 
 
 Şimdi her bir ürün için bunu tabloya yazacak bir procedure yazalım.
-
-CREATE PROC \[dbo\].\[fillVectorDetailsContentByVectorId_WEBITEMS\]
-
+```SQL
+CREATE PROC [dbo].[fillVectorDetailsContentByVectorId_WEBITEMS]
 @vectorId as int
-
+ 
 AS
+delete from vectordetails_WEBITEMS where vector_id=@vectorId 
 
-delete from vectordetails_WEBITEMS where vector_id=@vectorId
-
-insert into vectordetails_WEBITEMS
+ insert into vectordetails_WEBITEMS
 
 (
-
-vector_id, Key\_, value\_
-
+vector_id, Key_, value_
 )
 
-select e.ID,d.ordinal, try_convert(float,d.value)
-
+select e.ID,d.ordinal,  try_convert(float,d.value)    
 from WEBITEMS e
-
-cross apply (select \* from string_split (replace(
-replace(convert(nvarchar(max),e.VECTOR768),\'\]\',\'\'),\'\[\',\'\')
-,\',\',1) ) d
-
-where e.VECTOR768 is not null
-
-and e.ID =@vectorId
+cross apply (select * from string_split (replace( replace(convert(nvarchar(max),e.VECTOR768),']',''),'[','') ,',',1)   ) d
+where e.VECTOR768 is not null 
+and e.ID  =@vectorId
+```
 
 ![image](https://github.com/user-attachments/assets/9ee81315-bc15-49c8-b227-e14620446272)
-
 
 Şimdi tüm ürünler için bu procedürü çağıralım.
 
@@ -1155,129 +838,75 @@ and e.ID =@vectorId
 Evet artık buraya kadar geldikten sonra sırada hızlı şekilde benzerlik
 hesaplama işlemi var. Bunun için yazdığım bir TSQL kodu var.
 
-\-- Declare variables
-
-DECLARE @input_text NVARCHAR(MAX) =\'Lenovo ya da Samsonite marka bir
-notebook çantası bakıyorum\';
-
+```SQL
+-- Declare variables
+DECLARE @input_text NVARCHAR(MAX)   ='Lenovo ya da Samsonite marka bir notebook çantası bakıyorum';
 DECLARE @vectorstr NVARCHAR(MAX);
-
 DECLARE @vector NVARCHAR(MAX);
 
-\-- Remove special characters from the input text
-
+-- Remove special characters from the input text
 SET @input_text = dbo.RemoveSpecialChars(@input_text);
-
+ 
 DECLARE @outputVector NVARCHAR(MAX);
-
-EXEC getEmbeddingsLocal @input_text, @vectorstr OUTPUT;
-
-\-- Create a temporary table to store the vector values
-
-CREATE TABLE \#t (
-
-vector_id INT,
-
-key\_ INT,
-
-value\_ FLOAT
-
+EXEC getEmbeddingsLocal   @input_text, @vectorstr OUTPUT;
+ 
+-- Create a temporary table to store the vector values
+CREATE TABLE #t (
+	vector_id INT,
+    key_ INT,
+    value_ FLOAT
 );
 
-\-- Insert vector values into the temporary table
+-- Insert vector values into the temporary table
+INSERT INTO #t (vector_id, key_, value_)
+SELECT 
+	-1 AS vector_id,  -- Use -1 as the vector ID for the input text
+	d.ordinal AS key_,  -- The position of the value in the vector
+	CONVERT(FLOAT, d.value) AS value_   -- The value of the vector
+FROM 
+STRING_SPLIT(@vectorstr, ',', 1) AS d 
+	 
+-- Calculate the cosine similarity between the input vector and stored vectors
+SELECT TOP 100  
+   vector_id, 
+   SUM(dot_product) / SUM(SQRT(magnitude1) * SQRT(magnitude2)) AS Similarity,
+   @input_text AS SearchedQuery,  -- Include the input query for reference
+   (
+       SELECT TOP 1  DESCRIPTION2  
+          FROM  WEBITEMS 
+          WHERE ID = TT.vector_id 
+   ) AS SimilarTitle  -- Fetch the most similar title from the walmart_product_details table
+	into #t1 
+    FROM
+    (
+ 
+        SELECT 
+            T.vector_id, 
+            SUM(VD.value_ * T.value_) AS dot_product,  -- Dot product of input and stored vectors
+            SUM(VD.value_*VD.value_) AS magnitude1,  -- Magnitude of the input vector
+            SUM(T.value_*T.value_) AS magnitude2  -- Magnitude of the stored vector
+        FROM 
+            #t VD  -- Input vector data
+        CROSS APPLY 
+        (
+            -- Retrieve stored vectors where the key matches the input vector key
+            SELECT    * 
+            FROM vectordetails_WEBITEMS vd2 
+            WHERE key_ = VD.key_ 
+        ) T 
+		 
+        GROUP BY T.vector_id  -- Group by vector ID to calculate the similarity for each stored vector
+    ) TT 
+GROUP BY vector_id  -- Group the final similarity results by vector ID
+ORDER BY 2 DESC;  -- Order by similarity in descending order (most similar first)
+select DISTINCT   vector_id,ROUND(similarity,5) Similarity,similarTitle ProductName from #t1 
+WHERE similarTitle IS NOT NULL 
+ORDER BY 2 DESC 
 
-INSERT INTO \#t (vector_id, key\_, value\_)
+DROP TABLE #t,#t1 ;
 
-SELECT
+```
 
--1 AS vector_id, \-- Use -1 as the vector ID for the input text
-
-d.ordinal AS key\_, \-- The position of the value in the vector
-
-CONVERT(FLOAT, d.value) AS value\_ \-- The value of the vector
-
-FROM
-
-STRING_SPLIT(@vectorstr, \',\', 1) AS d
-
-\-- Calculate the cosine similarity between the input vector and stored
-vectors
-
-SELECT TOP 100
-
-vector_id,
-
-SUM(dot_product) / SUM(SQRT(magnitude1) \* SQRT(magnitude2)) AS
-Similarity,
-
-@input_text AS SearchedQuery, \-- Include the input query for reference
-
-(
-
-SELECT TOP 1 DESCRIPTION2
-
-FROM WEBITEMS
-
-WHERE ID = TT.vector_id
-
-) AS SimilarTitle \-- Fetch the most similar title from the
-walmart_product_details table
-
-into \#t1
-
-FROM
-
-(
-
-SELECT
-
-T.vector_id,
-
-SUM(VD.value\_ \* T.value\_) AS dot_product, \-- Dot product of input
-and stored vectors
-
-SUM(VD.value\_\*VD.value\_) AS magnitude1, \-- Magnitude of the input
-vector
-
-SUM(T.value\_\*T.value\_) AS magnitude2 \-- Magnitude of the stored
-vector
-
-FROM
-
-\#t VD \-- Input vector data
-
-CROSS APPLY
-
-(
-
-\-- Retrieve stored vectors where the key matches the input vector key
-
-SELECT \*
-
-FROM vectordetails_WEBITEMS vd2
-
-WHERE key\_ = VD.key\_
-
-) T
-
-GROUP BY T.vector_id \-- Group by vector ID to calculate the similarity
-for each stored vector
-
-) TT
-
-GROUP BY vector_id \-- Group the final similarity results by vector ID
-
-ORDER BY 2 DESC; \-- Order by similarity in descending order (most
-similar first)
-
-select DISTINCT vector_id,ROUND(similarity,5) Similarity,similarTitle
-ProductName from \#t1
-
-WHERE similarTitle IS NOT NULL
-
-ORDER BY 2 DESC
-
-DROP TABLE \#t,#t1 ;
 
 ![image](https://github.com/user-attachments/assets/def30fc1-42b5-4cb3-bfa3-edd9e1600a5c)
 
@@ -1285,11 +914,11 @@ DROP TABLE \#t,#t1 ;
 Sorgumuz güzel çalışıyor görünüyor ancak süre 9 saniye. Bunu biraz
 hızlandırmak için tablomuza birkaç index ekleyelim.
 
-Create Index IX01 on vectordetails_WEBITEMS(key\_) include
-(vector_id,value\_,ID)
+```SQL
+Create Index IX01 on vectordetails_WEBITEMS(key_) include (vector_id,value_,ID) 
+Create Index IX02 on vectordetails_WEBITEMS(key_,vector_id) include (value_,ID)
+```
 
-Create Index IX02 on vectordetails_WEBITEMS(key\_,vector_id) include
-(value\_,ID)
 
 ![image](https://github.com/user-attachments/assets/bfb888cf-689f-4deb-8f67-04c7a417a194)
 
@@ -1334,7 +963,6 @@ INCLUDE(value\_)
 Şimdi süre 3 saniyeye kadar düştü.
 
 ![image](https://github.com/user-attachments/assets/bd4f1ab3-354d-475d-9e0a-d9e3e6eb4e57)
-
 
 Bu sorguyu daha hızlandırmak için bir işlem daha kaldı.
 
