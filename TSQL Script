@@ -1,0 +1,222 @@
+--SCRIPTLER
+--GELENEKSEL TEXT ARAMA
+SELECT * FROM WEBITEMS WHERE TITLE_ LIKE '%LENOVO NOTEBOOK ÇANTASI%'
+
+SELECT * FROM WEBITEMS WHERE 
+TITLE_ LIKE N'%Lenovo%'
+AND TITLE_ LIKE N'%Notebook%'
+AND TITLE_ LIKE N'%Çantası%'
+
+SELECT * FROM WEBITEMS WHERE 
+TITLE_ LIKE N'%Lenovo%'
+AND TITLE_ LIKE N'%Notebook%'
+AND TITLE_ LIKE N'%Çanta%'
+
+SELECT * FROM  HB_LINKS WHERE 
+CONTAINS(TITLE_,N'Lenovo')
+AND CONTAINS(TITLE_,N'Notebook')
+AND CONTAINS(TITLE_,N'Çantası')
+
+--Get Embedding   
+DECLARE @input_text as nvarchar(max)=N'Lenovo ya da Samsonite marka bir notebook çantası bakıyorum'
+DECLARE @outputVector NVARCHAR(MAX);
+EXEC getEmbeddings  @input_text,  @outputVector OUTPUT;
+ 
+SELECT @outputVector as QueryVector
+
+--Get Embeddinglocal   
+DECLARE @input_text as nvarchar(max)=N'Lenovo ya da Samsonite marka bir notebook çantası bakıyorum'
+DECLARE @outputVector NVARCHAR(MAX);
+EXEC getEmbeddingsLocal  @input_text,  @outputVector OUTPUT;
+ 
+SELECT @outputVector as QueryVector
+
+--Örnek Cosine Distance hesaplama
+DECLARE @Vector1 AS NVARCHAR(MAX) = '[0.5,0.3,-0.8]'
+DECLARE @Vector2 AS NVARCHAR(MAX) = '[-0.2,0.4,0.9]'
+DECLARE @dotproduct AS FLOAT
+DECLARE @magnitude1 AS FLOAT
+DECLARE @magnitude2 AS FLOAT
+
+SET @dotproduct = (0.5 * (-0.2)) + (0.3 * 0.4) + (-0.8 * 0.9)
+SET @magnitude1 = (0.5 * 0.5) + (0.3 * 0.3) + (-0.8 * -0.8)
+SET @magnitude2 = (-0.2 * -0.2) + (0.4 * 0.4) + (0.9 * 0.9)
+
+DECLARE @Similarity AS FLOAT
+SET @Similarity = @dotproduct / (SQRT(@magnitude1) * SQRT(@magnitude2));
+
+SELECT @dotproduct AS DotProduct
+    ,@magnitude1 AS Magnitude1
+    ,@magnitude2 AS Magnitude2
+    ,@Similarity AS Similarity
+
+
+--Cosine Distance fonksiyonu
+DECLARE @VECTOR1 AS VARCHAR(MAX)='1,2,3,4,5,6,7,8'
+DECLARE @VECTOR2 AS VARCHAR(MAX)='2,0,3,4,5,6,7,8'
+
+SELECT dbo.CosineSimilarity(@VECTOR1,@VECTOR2)
+
+
+--Vektör arama
+--Arama cümlesi oluşturuluyor ve vektöre çevriliyor
+DECLARE @query AS NVARCHAR(MAX) = 'Bir notebook çantası bakıyorum';
+DECLARE @searchVector AS NVARCHAR(MAX);
+exec getEmbeddingsLocal @query,@searchVector output 
+
+--Veritabanından seçilen 1 satırdaki DESCRIPTION2 alanı vektöre çevriliyor
+DECLARE @dbText as nvarchar(max)
+DECLARE @dbVector as nvarchar(max)
+SELECT @dbText=DESCRIPTION2 FROM WEBITEMS WHERE ID=80472
+exec getEmbeddingsLocal @dbText,@dbVector output 
+
+--Vektör ve Cümeleler yazdırılıyor
+select @query Query,@searchVector SearchVector
+select @dbText DBText,@dbvector DBVector
+
+--İki vektörün benzerlik ve Cosine distance değerleri hesaplanıyor
+Select dbo.CosineSimilarity(@searchVector,@dbvector) Similarity,1 -dbo.CosineSimilarity(@searchVector,@dbvector) CosineDistance
+
+--Cosine Distance Hızlı Hesaplama
+-- Declare variables
+DECLARE @input_text NVARCHAR(MAX)   ='Lenovo ya da Samsonite marka bir notebook çantası bakıyorum';
+DECLARE @vectorstr NVARCHAR(MAX);
+DECLARE @vector NVARCHAR(MAX);
+
+-- Remove special characters from the input text
+SET @input_text = dbo.RemoveSpecialChars(@input_text);
+ 
+DECLARE @outputVector NVARCHAR(MAX);
+EXEC getEmbeddingsLocal   @input_text, @vectorstr OUTPUT;
+ 
+-- Create a temporary table to store the vector values
+CREATE TABLE #t (
+	vector_id INT,
+    key_ INT,
+    value_ FLOAT
+);
+
+-- Insert vector values into the temporary table
+INSERT INTO #t (vector_id, key_, value_)
+SELECT 
+	-1 AS vector_id,  -- Use -1 as the vector ID for the input text
+	d.ordinal AS key_,  -- The position of the value in the vector
+	CONVERT(FLOAT, d.value) AS value_   -- The value of the vector
+FROM 
+STRING_SPLIT(@vectorstr, ',', 1) AS d 
+	 
+-- Calculate the cosine similarity between the input vector and stored vectors
+SELECT TOP 100  
+   vector_id, 
+   SUM(dot_product) / SUM(SQRT(magnitude1) * SQRT(magnitude2)) AS Similarity,
+   @input_text AS SearchedQuery,  -- Include the input query for reference
+   (
+       SELECT TOP 1  DESCRIPTION2  
+          FROM  WEBITEMS 
+          WHERE ID = TT.vector_id 
+   ) AS SimilarTitle  -- Fetch the most similar title from the walmart_product_details table
+	into #t1 
+    FROM
+    (
+ 
+        SELECT 
+            T.vector_id, 
+            SUM(VD.value_ * T.value_) AS dot_product,  -- Dot product of input and stored vectors
+            SUM(VD.value_*VD.value_) AS magnitude1,  -- Magnitude of the input vector
+            SUM(T.value_*T.value_) AS magnitude2  -- Magnitude of the stored vector
+        FROM 
+            #t VD  -- Input vector data
+        CROSS APPLY 
+        (
+            -- Retrieve stored vectors where the key matches the input vector key
+            SELECT    * 
+            FROM vectordetails_WEBITEMS vd2 
+            WHERE key_ = VD.key_ 
+        ) T 
+		 
+        GROUP BY T.vector_id  -- Group by vector ID to calculate the similarity for each stored vector
+    ) TT 
+GROUP BY vector_id  -- Group the final similarity results by vector ID
+ORDER BY 2 DESC;  -- Order by similarity in descending order (most similar first)
+select DISTINCT   vector_id,ROUND(similarity,5) Similarity,similarTitle ProductName from #t1 
+WHERE similarTitle IS NOT NULL 
+ORDER BY 2 DESC 
+
+DROP TABLE #t,#t1 ;
+
+
+--Cosine Distance Hızlı Arama
+SET STATISTICS IO ON 
+DECLARE @input_text nVARCHAR(MAX) = 'Lenovo ya da Samsonite marka bir notebook çantası arıyorum';
+
+DECLARE @vectorstr nVARCHAR(MAX)
+
+DECLARE @outputVector NVARCHAR(MAX);
+EXEC getEmbeddingsLocal   @input_text,  @vectorstr OUTPUT;
+ 
+ 
+CREATE TABLE #t (
+	vector_id INT
+	,key_ INT
+	,value_ FLOAT
+	,valsqrt FLOAT
+	,magnitude FLOAT
+	);
+
+-- Insert vector values into the temporary table
+INSERT INTO #t (
+	vector_id
+	,key_
+	,value_
+	,valsqrt
+	)
+SELECT - 1 AS vector_id
+	,-- Use -1 as the vector ID for the input text
+	d.ordinal AS key_
+	,-- The position of the value in the vector
+	CONVERT(FLOAT, d.value) AS value_
+	,-- The value of the vector
+	CONVERT(FLOAT, d.value) * CONVERT(FLOAT, d.value) AS valsqrt -- Squared value
+FROM STRING_SPLIT(@vectorstr, ',', 1) AS d
+
+ 
+CREATE INDEX IX1 ON #T (KEY_) INCLUDE (
+	[vector_id]
+	,[value_]
+	,[valsqrt]
+	)
+
+
+DECLARE @magnitudesqrt AS FLOAT
+
+SELECT @magnitudesqrt = sqrt(sum(valsqrt))
+FROM #T
+
+SELECT  top 100 T.vector_id
+	,dotProduct / (sqrt(@magnitudesqrt) * sqrt(vs.magnitudesqrt) ) CosineSimularity
+	,1 - (dotProduct / (@magnitudesqrt * vs.magnitudesqrt)) CosineDistance
+	INTO #T1 
+FROM (
+	SELECT v2.vector_id
+		,sum(v1.value_ * v2.value_) dotproduct
+	FROM #t v1 WITH (NOLOCK)
+	INNER JOIN vectordetails_WEBITEMS  v2 WITH (NOLOCK) ON v1.key_ = v2.key_  
+	GROUP BY v2.vector_id
+		,v1.magnitude
+		,V2.magnitude
+	) t
+LEFT JOIN vectorSummary_WEBITEMS VS ON VS.vector_id = T.vector_id
+ 
+ORDER BY 2 desc
+
+SELECT T1.*,I.DESCRIPTION2 FROM #T1 T1
+JOIN WEBITEMS I ON I.ID=T1.vector_id
+
+DROP TABLE #t,#T1
+
+ 
+--sp ile arama
+exec SimilarityContent_WEBITEMS N'Lenovo ya da Samsonite marka bir notebook çantası bakıyorum'
+exec SimilarityContent_WEBITEMS N'looking for a Lenovo or Samsonite brand, notebook pack'
+
+
