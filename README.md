@@ -941,24 +941,18 @@ ekleyelim.
 
 Hatta SQL Server 2022 ile birlikte gelen Ordered Clustered Columnstore
 Index ekleyelim.
-
-CREATE CLUSTERED COLUMNSTORE INDEX \[CCIX1\] ON
-\[dbo\].\[vectordetails_WEBITEMS\]
-
-Order(Vector_id)WITH ( DROP_EXISTING = on, COMPRESSION_DELAY = 0,
-DATA_COMPRESSION = COLUMNSTORE,
-
+ 
+```SQL
+CREATE CLUSTERED COLUMNSTORE INDEX [CCIX1] ON [dbo].[vectordetails_WEBITEMS] 
+Order(Vector_id)WITH ( DROP_EXISTING = on, COMPRESSION_DELAY = 0, DATA_COMPRESSION = COLUMNSTORE,
 maxdop=1
-
-) ON \[PRIMARY\]
-
+) ON [PRIMARY]
 GO
-
 CREATE NONCLUSTERED INDEX IX1 ON dbo.vectordetails_WEBITEMS
+(key_,vector_id)
+INCLUDE(value_)  
 
-(key\_,vector_id)
-
-INCLUDE(value\_)
+'''
 
 Şimdi süre 3 saniyeye kadar düştü.
 
@@ -987,160 +981,110 @@ Update vectordetails_WEBITEMS set valsqrt=value\_\*value\_
 Şimdi de magnitude değerlerini hesaplamak için ayrı tablo daha
 ekleyelim.
 
+```SQL
 CREATE TABLE vectorSummary(
-
 id int IDENTITY(1,1),
-
 vector_id int,
-
 magnitude float ,
-
 magnitudeSqrt float
+) 
 
-)
+'''
 
 Şimdi de vectorDetails_WEBITEMS tablosundan gruplayarak buraya atalım.
-
+ ```SQL
 INSERT INTO vectorSummary_WEBITEMS
-
 (vector_id,magnitude,magnitudeSqrt)
-
-select vector_id,SUM(valsqrt) ,SQRT( SUM(valsqrt) )
-
+select  vector_id,SUM(valsqrt) ,SQRT( SUM(valsqrt) ) 
 FROM vectordetails_WEBITEMS
+WHERE vector_id=@vectorId 
+GROUP BY vector_id  
 
-WHERE vector_id=@vectorId
-
-GROUP BY vector_id
-
+'''
 Son olarak bir de index oluşturalım.
-
+'''SQL
 CREATE NONCLUSTERED INDEX IX1 ON dbo.vectorSummary_WEBITEMS
-
 (
-
 vector_id ASC
-
 )
-
 INCLUDE(id,magnitude,magnitudeSqrt)
-
+'''
 Şimdi de hesaplama sorgumuzu buna göre değiştirip çalıştıralım.
 
-SET STATISTICS IO ON
-
-DECLARE @input_text nVARCHAR(MAX) = \'Lenovo ya da Samsonite marka bir
-notebook çantası arıyorum\';
+```SQL
+SET STATISTICS IO ON 
+DECLARE @input_text nVARCHAR(MAX) = 'Lenovo ya da Samsonite marka bir notebook çantası arıyorum';
 
 DECLARE @vectorstr nVARCHAR(MAX)
 
 DECLARE @outputVector NVARCHAR(MAX);
+EXEC getEmbeddingsLocal   @input_text,  @vectorstr OUTPUT;
+ 
+ 
+CREATE TABLE #t (
+	vector_id INT
+	,key_ INT
+	,value_ FLOAT
+	,valsqrt FLOAT
+	,magnitude FLOAT
+	);
 
-EXEC getEmbeddingsLocal @input_text, @vectorstr OUTPUT;
-
-CREATE TABLE \#t (
-
-vector_id INT
-
-,key\_ INT
-
-,value\_ FLOAT
-
-,valsqrt FLOAT
-
-,magnitude FLOAT
-
-);
-
-\-- Insert vector values into the temporary table
-
-INSERT INTO \#t (
-
-vector_id
-
-,key\_
-
-,value\_
-
-,valsqrt
-
-)
-
+-- Insert vector values into the temporary table
+INSERT INTO #t (
+	vector_id
+	,key_
+	,value_
+	,valsqrt
+	)
 SELECT - 1 AS vector_id
+	,-- Use -1 as the vector ID for the input text
+	d.ordinal AS key_
+	,-- The position of the value in the vector
+	CONVERT(FLOAT, d.value) AS value_
+	,-- The value of the vector
+	CONVERT(FLOAT, d.value) * CONVERT(FLOAT, d.value) AS valsqrt -- Squared value
+FROM STRING_SPLIT(@vectorstr, ',', 1) AS d
 
-,\-- Use -1 as the vector ID for the input text
+ 
+CREATE INDEX IX1 ON #T (KEY_) INCLUDE (
+	[vector_id]
+	,[value_]
+	,[valsqrt]
+	)
 
-d.ordinal AS key\_
-
-,\-- The position of the value in the vector
-
-CONVERT(FLOAT, d.value) AS value\_
-
-,\-- The value of the vector
-
-CONVERT(FLOAT, d.value) \* CONVERT(FLOAT, d.value) AS valsqrt \--
-Squared value
-
-FROM STRING_SPLIT(@vectorstr, \',\', 1) AS d
-
-CREATE INDEX IX1 ON \#T (KEY\_) INCLUDE (
-
-\[vector_id\]
-
-,\[value\_\]
-
-,\[valsqrt\]
-
-)
 
 DECLARE @magnitudesqrt AS FLOAT
 
 SELECT @magnitudesqrt = sqrt(sum(valsqrt))
+FROM #T
 
-FROM \#T
-
-SELECT top 100 T.vector_id
-
-,dotProduct / (sqrt(@magnitudesqrt) \* sqrt(vs.magnitudesqrt) )
-CosineSimularity
-
-,1 - (dotProduct / (@magnitudesqrt \* vs.magnitudesqrt)) CosineDistance
-
-INTO \#T1
-
+SELECT  top 100 T.vector_id
+	,dotProduct / (sqrt(@magnitudesqrt) * sqrt(vs.magnitudesqrt) ) CosineSimularity
+	,1 - (dotProduct / (@magnitudesqrt * vs.magnitudesqrt)) CosineDistance
+	INTO #T1 
 FROM (
-
-SELECT v2.vector_id
-
-,sum(v1.value\_ \* v2.value\_) dotproduct
-
-FROM \#t v1 WITH (NOLOCK)
-
-INNER JOIN vectordetails_WEBITEMS v2 WITH (NOLOCK) ON v1.key\_ =
-v2.key\_
-
-GROUP BY v2.vector_id
-
-,v1.magnitude
-
-,V2.magnitude
-
-) t
-
+	SELECT v2.vector_id
+		,sum(v1.value_ * v2.value_) dotproduct
+	FROM #t v1 WITH (NOLOCK)
+	INNER JOIN vectordetails_WEBITEMS  v2 WITH (NOLOCK) ON v1.key_ = v2.key_  
+	GROUP BY v2.vector_id
+		,v1.magnitude
+		,V2.magnitude
+	) t
 LEFT JOIN vectorSummary_WEBITEMS VS ON VS.vector_id = T.vector_id
-
+ 
 ORDER BY 2 desc
 
-SELECT T1.\*,I.DESCRIPTION2 FROM \#T1 T1
-
+SELECT T1.*,I.DESCRIPTION2 FROM #T1 T1
 JOIN WEBITEMS I ON I.ID=T1.vector_id
 
-DROP TABLE \#t,#T1
+DROP TABLE #t,#T1
+
+'''
 
 Evet şimdi görüldüğü gibi arama işlemi 1 saniye civarına düştü.
 
 ![image](https://github.com/user-attachments/assets/385f2cdc-28c5-4a01-ab75-0e8801a73556)
-
 
 **Vektör arama işlemi evrensel bir arama içerir.**
 
